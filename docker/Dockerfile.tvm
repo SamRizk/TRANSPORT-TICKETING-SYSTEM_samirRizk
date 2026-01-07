@@ -1,0 +1,58 @@
+# docker/Dockerfile.tvm
+# Multi-stage build for Ticket Vending Machine
+
+FROM ubuntu:22.04 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install build dependencies including MQTT
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    cmake \
+    git \
+    libssl-dev \
+    libpaho-mqtt-dev \
+    libpaho-mqttpp-dev \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /build
+
+# Copy source code
+COPY CMakeLists.txt .
+COPY src/ src/
+COPY include/ include/
+
+# Build the application
+RUN mkdir -p build && cd build && \
+    cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF .. && \
+    make tvm -j$(nproc) && \
+    ls -la bin/
+
+# Runtime stage
+FROM ubuntu:22.04
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    libssl3 \
+    libpaho-mqtt1.3 \
+    libpaho-mqttpp3-1 \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app user
+RUN useradd -m -u 1000 appuser
+
+WORKDIR /app
+
+# Copy binary from builder
+COPY --from=builder /build/build/bin/tvm /app/tvm
+
+# Set permissions
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
+# Run the application
+CMD ["./tvm", "tcp://mosquitto:1883", "http://backoffice:8080"]

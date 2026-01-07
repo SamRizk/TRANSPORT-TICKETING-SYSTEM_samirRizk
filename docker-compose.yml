@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  # Mosquitto MQTT Broker
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: mosquitto
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./docker/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+    networks:
+      - ticketing-network
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-i", "healthcheck", "-W", "3"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # Back-Office Service
+  backoffice:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.backoffice
+    container_name: backoffice
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    networks:
+      - ticketing-network
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    environment:
+      - PORT=8080
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  # Ticket Vending Machine
+  tvm:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.tvm
+    container_name: tvm
+    networks:
+      - ticketing-network
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+      backoffice:
+        condition: service_healthy
+    environment:
+      - MQTT_BROKER=tcp://mosquitto:1883
+      - BACKOFFICE_URL=http://backoffice:8080
+    restart: unless-stopped
+
+  # Gate Validator 1
+  gate1:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.gate
+    container_name: gate1
+    networks:
+      - ticketing-network
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+      backoffice:
+        condition: service_healthy
+    environment:
+      - GATE_ID=001
+      - MQTT_BROKER=tcp://mosquitto:1883
+      - BACKOFFICE_URL=http://backoffice:8080
+    restart: unless-stopped
+
+  # Gate Validator 2 (shows multiple gates support)
+  gate2:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.gate
+    container_name: gate2
+    networks:
+      - ticketing-network
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+      backoffice:
+        condition: service_healthy
+    environment:
+      - GATE_ID=002
+      - MQTT_BROKER=tcp://mosquitto:1883
+      - BACKOFFICE_URL=http://backoffice:8080
+    restart: unless-stopped
+
+networks:
+  ticketing-network:
+    driver: bridge
+    name: ticketing-network
+
+volumes:
+  mosquitto-data:
+  mosquitto-log:
