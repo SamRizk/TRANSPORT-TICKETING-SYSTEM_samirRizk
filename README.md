@@ -1,270 +1,304 @@
 # Transport Ticketing System
 
-A modular C++ transport ticketing system simulator featuring ticket vending machines, gate validators, and a centralized back-office system with MQTT communication.
+A comprehensive C++ transport ticketing system featuring ticket vending machines, gate validators, and a centralized back-office system with MQTT and REST API communication.
 
-## 🏗️ Architecture
+## 📋 Project Overview
+
+This project implements a realistic transport ticketing system simulator as per the technical requirements, including:
+
+- **Ticket Vending Machine (TVM)**: Issues tickets via MQTT → REST API flow
+- **Gate Validator**: Validates tickets online/offline with automatic fallback
+- **Back-Office Service**: Central system for ticket creation, validation, and reporting
+- **MQTT Communication**: Real-time messaging using Eclipse Mosquitto
+- **Docker Support**: Complete containerized deployment with docker-compose
+
+## 🏗️ System Architecture
 
 ```
-┌─────────────────┐       MQTT        ┌──────────────────┐
-│  Ticket Vending │◄─────────────────►│  MQTT Broker     │
-│    Machine      │   sale/request    │  (Mosquitto)     │
-└────────┬────────┘                   └────────┬─────────┘
-         │                                     │
-         │ HTTP REST API                       │ MQTT
-         │                                     │ validation/request
-         ▼                                     ▼
-┌─────────────────┐                   ┌──────────────────┐
-│   Back-Office   │◄──────────────────│  Gate Validator  │
-│    Service      │   HTTP REST API   │   (Multiple)     │
-└─────────────────┘   validation      └──────────────────┘
-         │
-         ▼
-    ┌────────┐
-    │ Tickets│
-    │  CSV   │
-    └────────┘
+                    ┌─────────────────┐
+                    │  MQTT Broker    │
+                    │  (Mosquitto)    │
+                    └────────┬────────┘
+                             │
+            ┌────────────────┼────────────────┐
+            │                │                │
+            ▼                ▼                ▼
+    ┌───────────────┐  ┌───────────┐  ┌──────────────┐
+    │     TVM       │  │   Gate    │  │  Back-Office │
+    │   (MQTT)      │  │  (MQTT)   │  │   (REST)     │
+    └───────┬───────┘  └─────┬─────┘  └──────┬───────┘
+            │                │                │
+            │    HTTP REST   │   HTTP REST    │
+            └────────────────┴────────────────┘
+                             │
+                             ▼
+                    ┌─────────────────┐
+                    │  Tickets (CSV)  │
+                    └─────────────────┘
 ```
 
 ## ✨ Features
 
-- **Ticket Vending Machine (TVM)**: Issues tickets through MQTT → REST API flow
-- **Gate Validator**: Validates tickets online/offline with automatic fallback
-- **Back-Office**: Centralized ticket creation, validation, and reporting
-- **MQTT Communication**: Real-time messaging using Mosquitto broker
-- **Docker Support**: Complete containerized deployment
-- **Offline Mode**: Gates can validate expired tickets when back-office is unavailable
-- **XML Reporting**: Gates send transaction reports to back-office
-- **Multiple Gates**: Support for dynamic gate addition
+### ✅ All Required Features
+- [x] Ticket creation through TVM (MQTT → REST)
+- [x] Online validation through Gate (REST API)
+- [x] Offline validation (expiry check when Back-Office unavailable)
+- [x] Base64 ticket encoding/decoding
+- [x] MQTT communication (Mosquitto broker)
+- [x] REST API endpoints for all operations
+- [x] CSV ticket storage
+- [x] XML transaction reporting from gates
+- [x] Docker containerization (docker-compose)
+- [x] Multiple gate support
+
+### 🎁 Bonus Features
+- [x] Health check endpoints
+- [x] Simulated delayed responses and failures
+- [x] Retry mechanisms (HTTP timeouts)
+- [x] Dynamic gate scaling
+- [x] Comprehensive error handling
+- [x] Structured logging
+- [x] Thread-safe operations
 
 ## 📋 Prerequisites
 
 ### For Docker Deployment (Recommended)
 - Docker Engine 20.10+
 - Docker Compose 1.29+
+- Git
 
 ### For Local Development
 - Ubuntu 22.04 or similar Linux distribution
 - GCC/G++ 9.0+ with C++17 support
 - CMake 3.15+
 - OpenSSL development libraries
-- MQTT C++ (Paho) library
-- Mosquitto broker
+- Paho MQTT C++ library
+- Mosquitto broker and clients
 
 ## 🚀 Quick Start
 
-### Using Docker (Easiest Method)
+### Option 1: Docker (Easiest)
 
-1. **Clone the repository**
-   ```bash
-   git clone <[repository-url](https://github.com/SamRizk/TRANSPORT-TICKETING-SYSTEM_samirRizk.git)>
-   cd TicketingSystem_samirRizk
-   ```
+```bash
+# 1. Clone the repository
+git clone <[your-repo-url](https://github.com/SamRizk/TRANSPORT-TICKETING-SYSTEM_samirRizk.git)>
+cd TicketingTask_SamirRizk
 
-2. **Build and start all services**
-   ```bash
-   docker-compose up --build
-   ```
+# 2. Start all services
+docker-compose up --build
 
-3. **Verify services are running**
-   ```bash
-   # Check Back-Office health
-   curl http://localhost:8080/health
-   
-   # Check Docker containers
-   docker-compose ps
-   ```
+# 3. In another terminal, test the system
+./scripts/simulate_ticket_sale.sh 7 1
+./scripts/simulate_ticket_validation.sh
+```
 
-4. **Simulate ticket purchase**
-   ```bash
-   ./scripts/simulate_ticket_sale.sh 7 1
-   # Arguments: validity_days line_number
-   ```
+### Option 2: Manual Build
 
-5. **Validate a ticket**
-   ```bash
-   # Option 1: Validation with auto-created ticket
-   ./scripts/simulate_ticket_validation.sh
-   
-   # Option 2: Validation with specific ticket
-   ./scripts/simulate_ticket_validation.sh <base64_ticket>
-   ```
+```bash
+# 1. Install dependencies
+sudo apt-get update
+sudo apt-get install -y \
+    build-essential cmake git \
+    libssl-dev libpaho-mqtt-dev libpaho-mqttpp-dev \
+    mosquitto mosquitto-clients \
+    curl jq
 
-### Manual Build (Linux)
+# 2. Build the project
+./scripts/build.sh
 
-1. **Install dependencies**
-   ```bash
-   sudo apt-get update
-   sudo apt-get install -y \
-       build-essential cmake git \
-       libssl-dev libpaho-mqtt-dev \
-       mosquitto mosquitto-clients \
-       curl jq
-   ```
+# 3. Start Mosquitto (Terminal 1)
+mosquitto -c docker/mosquitto.conf
 
-2. **Build the project**
-   ```bash
-   mkdir build && cd build
-   cmake -DCMAKE_BUILD_TYPE=Release ..
-   make -j$(nproc)
-   ```
+# 4. Start Back-Office (Terminal 2)
+./build/bin/backoffice
 
-3. **Start Mosquitto broker**
-   ```bash
-   mosquitto -c /etc/mosquitto/mosquitto.conf
-   ```
+# 5. Start TVM (Terminal 3)
+./build/bin/tvm tcp://localhost:1883 http://localhost:8080
 
-4. **Run services** (in separate terminals)
-   ```bash
-   # Terminal 1: Back-Office
-   ./build/bin/backoffice
-   
-   # Terminal 2: TVM
-   ./build/bin/tvm tcp://localhost:1883 http://localhost:8080
-   
-   # Terminal 3: Gate
-   ./build/bin/gate 001 tcp://localhost:1883 http://localhost:8080
-   ```
+# 6. Start Gate (Terminal 4)
+./build/bin/gate 001 tcp://localhost:1883 http://localhost:8080
+
+# 7. Test (Terminal 5)
+./scripts/simulate_ticket_sale.sh 7 1
+./scripts/simulate_ticket_validation.sh
+```
 
 ## 📁 Project Structure
 
 ```
-TicketingSystem_YourName/
+TicketingTask_YourName/
 ├── src/
-│   ├── backoffice/          # Back-Office service
-│   ├── tvm/                 # Ticket Vending Machine
-│   ├── gate/                # Gate Validator
-│   └── common/              # Shared components (Ticket, MQTT, HTTP)
+│   ├── backoffice/
+│   │   └── main.cpp              # Back-Office service
+│   ├── tvm/
+│   │   └── main.cpp              # Ticket Vending Machine
+│   ├── gate/
+│   │   └── main.cpp              # Gate Validator
+│   └── common/
+│       └── ticket.cpp            # Ticket class implementation
 ├── include/
-│   ├── backoffice/          # Back-Office headers
-│   ├── tvm/                 # TVM headers
-│   ├── gate/                # Gate headers
-│   └── common/              # Common headers
+│   └── common/
+│       └── ticket.h              # Ticket class header
 ├── tests/
-│   ├── unit/                # Unit tests
-│   └── integration/         # Integration tests
+│   └── unit/                     # Unit tests
 ├── scripts/
-│   ├── simulate_ticket_sale.sh
-│   ├── simulate_ticket_validation.sh
-│   ├── run_services.sh
-│   └── build.sh
+│   ├── build.sh                  # Build script
+│   ├── simulate_ticket_sale.sh   # Sale simulation
+│   └── simulate_ticket_validation.sh  # Validation simulation
 ├── docker/
-│   ├── Dockerfile.backoffice
-│   ├── Dockerfile.tvm
-│   ├── Dockerfile.gate
-│   └── mosquitto.conf
+│   ├── Dockerfile.backoffice     # Back-Office container
+│   ├── Dockerfile.tvm            # TVM container
+│   ├── Dockerfile.gate           # Gate container
+│   └── mosquitto.conf            # MQTT broker config
 ├── data/
-│   └── tickets.csv          # Ticket storage
-├── docker-compose.yml
-├── CMakeLists.txt
-└── README.md
+│   └── tickets.csv               # Ticket storage
+├── docker-compose.yml            # Docker orchestration
+├── CMakeLists.txt                # Root build config
+└── README.md                     # This file
 ```
 
 ## 🎯 Usage Examples
 
-### Example 1: Complete Flow
+### Example 1: Create and Validate Ticket
 
 ```bash
-# 1. Start all services
+# Start services
 docker-compose up -d
 
-# 2. Create a ticket (7 days validity, line 1)
+# Create a ticket (7 days validity, line 1)
 ./scripts/simulate_ticket_sale.sh 7 1
 
-# 3. Get the ticket Base64 from response and validate it
-TICKET_BASE64="<base64_from_response>"
-./scripts/simulate_ticket_validation.sh $TICKET_BASE64
-
-# 4. View Back-Office logs
-docker-compose logs -f backoffice
-
-# 5. View Gate logs
-docker-compose logs -f gate1
+# The script will output a Base64 ticket
+# Validate the ticket
+./scripts/simulate_ticket_validation.sh
 ```
 
 ### Example 2: Test Offline Validation
 
 ```bash
-# Stop the back-office to simulate network failure
+# Stop Back-Office to simulate network failure
 docker-compose stop backoffice
 
-# Try validating a ticket - gate will use offline mode
+# Validate a ticket - gate will use offline mode (expiry check only)
 ./scripts/simulate_ticket_validation.sh
 
-# Restart back-office
+# Restart Back-Office
 docker-compose start backoffice
 ```
 
 ### Example 3: Multiple Gates
 
 ```bash
-# Scale gates to 5 instances
+# Scale to 5 gates
 docker-compose up -d --scale gate1=5
 
 # Send validation to specific gate
 mosquitto_pub -h localhost -t "ticket/validation/request/003" \
-  -m '{"ticketBase64": "..."}'
+  -m '{"ticketBase64": "<your-base64-ticket>"}'
 ```
 
-### Example 4: Direct API Testing
+### Example 4: Direct REST API
 
 ```bash
-# Create ticket via REST API
+# Create ticket
 curl -X POST http://localhost:8080/api/tickets/create \
   -H "Content-Type: application/json" \
   -d '{"validityDays": 30, "lineNumber": 5}'
 
-# Validate ticket via REST API
+# Validate ticket
 curl -X POST http://localhost:8080/api/tickets/validate \
   -H "Content-Type: application/json" \
-  -d '{"ticketBase64": "eyJ0aWNrZXRJZCI6IlRLVC0..."}'
+  -d '{"ticketBase64": "eyJ0aWNrZXRJZCI6..."}'
 
-# Get all tickets
+# List all tickets
 curl http://localhost:8080/api/tickets | jq '.'
+
+# Health check
+curl http://localhost:8080/health
 ```
+
+## 🔌 API Reference
+
+### Back-Office REST API (Port 8080)
+
+| Method | Endpoint | Description | Request Body |
+|--------|----------|-------------|--------------|
+| GET | `/health` | Health check | - |
+| POST | `/api/tickets/create` | Create ticket | `{"validityDays": 7, "lineNumber": 1}` |
+| POST | `/api/tickets/validate` | Validate ticket | `{"ticketBase64": "..."}` |
+| POST | `/api/reports` | Submit gate report | XML data |
+| GET | `/api/tickets` | List all tickets | - |
+
+### MQTT Topics
+
+| Topic | Direction | Purpose | Payload |
+|-------|-----------|---------|---------|
+| `ticket/sale/request` | → TVM | Ticket creation | `{"validityDays": 7, "lineNumber": 1}` |
+| `ticket/sale/response` | TVM → | Creation result | `{"ticketId": "...", "ticketBase64": "..."}` |
+| `ticket/validation/request` | → Gate | Validation request | `{"ticketBase64": "..."}` |
+| `ticket/validation/request/{gateId}` | → Gate | Gate-specific validation | `{"ticketBase64": "..."}` |
+| `ticket/validation/response` | Gate → | Validation result | `{"valid": true, "gateAction": "OPEN"}` |
 
 ## 🧪 Testing
 
-### Unit Tests
+### Run All Tests
+
 ```bash
 cd build
 ctest --verbose
 ```
 
-### Integration Tests
+### Test Scenarios
+
+**Scenario 1: Happy Path**
 ```bash
-./scripts/run_integration_tests.sh
+./scripts/simulate_ticket_sale.sh 7 1
+./scripts/simulate_ticket_validation.sh
+# Expected: Gate OPEN
 ```
 
-### Manual Testing with MQTT Explorer
-1. Download [MQTT Explorer](http://mqtt-explorer.com/)
-2. Connect to `localhost:1883`
-3. Publish to topics:
-   - `ticket/sale/request` - Create tickets
-   - `ticket/validation/request` - Validate tickets
-4. Subscribe to:
-   - `ticket/sale/response` - Ticket creation responses
-   - `ticket/validation/response` - Validation responses
+**Scenario 2: Expired Ticket**
+```bash
+# Create ticket with 0 days validity
+curl -X POST http://localhost:8080/api/tickets/create \
+  -d '{"validityDays": 0, "lineNumber": 1}'
+# Validate immediately - Expected: Gate CLOSED
+```
+
+**Scenario 3: Offline Mode**
+```bash
+docker-compose stop backoffice
+./scripts/simulate_ticket_validation.sh
+# Expected: Offline validation (expiry check only)
+```
 
 ## 📊 Monitoring
 
-### View Service Logs
+### View Logs
+
 ```bash
 # All services
 docker-compose logs -f
 
 # Specific service
 docker-compose logs -f backoffice
-docker-compose logs -f tvm
 docker-compose logs -f gate1
 ```
 
-### Check Service Health
+### Check Service Status
+
+```bash
+docker-compose ps
+```
+
+### View Statistics
+
 ```bash
 # Back-Office health
 curl http://localhost:8080/health
 
-# View all containers
-docker-compose ps
+# List all tickets
+curl http://localhost:8080/api/tickets | jq '.[] | {id, validityDays, lineNumber}'
 ```
 
 ## 🔧 Configuration
@@ -273,29 +307,22 @@ docker-compose ps
 
 **Back-Office:**
 - `PORT`: HTTP server port (default: 8080)
-- `MQTT_BROKER`: MQTT broker address
 
 **TVM:**
-- `MQTT_BROKER`: MQTT broker address (default: tcp://mosquitto:1883)
+- `MQTT_BROKER`: MQTT broker URL (default: tcp://mosquitto:1883)
 - `BACKOFFICE_URL`: Back-Office URL (default: http://backoffice:8080)
 
 **Gate:**
 - `GATE_ID`: Unique gate identifier
-- `MQTT_BROKER`: MQTT broker address
+- `MQTT_BROKER`: MQTT broker URL
 - `BACKOFFICE_URL`: Back-Office URL
 
-### MQTT Topics
-- `ticket/sale/request` - TVM listens for sale requests
-- `ticket/sale/response` - TVM publishes ticket creation results
-- `ticket/validation/request` - Gates listen for validation requests
-- `ticket/validation/request/{gate_id}` - Gate-specific validation
-- `ticket/validation/response` - Gates publish validation results
+## 🐛 Troubleshooting
 
-## 🛠️ Troubleshooting
+### Services Won't Start
 
-### Issue: Services won't start
 ```bash
-# Check if ports are already in use
+# Check ports
 netstat -tuln | grep -E '8080|1883'
 
 # Restart all services
@@ -303,74 +330,54 @@ docker-compose down
 docker-compose up --build
 ```
 
-### Issue: MQTT connection fails
+### MQTT Connection Failed
+
 ```bash
-# Check Mosquitto is running
+# Check Mosquitto
 docker-compose ps mosquitto
 
-# Test MQTT connection
+# Test MQTT
 mosquitto_pub -h localhost -t test -m "hello"
 mosquitto_sub -h localhost -t test
 ```
 
-### Issue: Back-Office not responding
-```bash
-# Check Back-Office logs
-docker-compose logs backoffice
+### Build Errors
 
-# Restart Back-Office
-docker-compose restart backoffice
+```bash
+# Clean rebuild
+CLEAN_BUILD=true ./scripts/build.sh
+
+# Check dependencies
+sudo apt-get install libpaho-mqtt-dev libpaho-mqttpp-dev
 ```
 
-## 🎓 Design Decisions
+## 📝 Design Decisions
 
-### Ticket Format
-- **JSON + Base64**: Tickets are stored as JSON and encoded in Base64 for transmission
-- **Fields**: ID, creation date, validity days, line number
-- **Why**: Easy to serialize, human-readable when decoded, compact for MQTT
+### Base64 Encoding
+- **Why**: Easy transmission over MQTT and HTTP without binary issues
+- **Implementation**: Custom implementation in Ticket class
 
-### Communication Protocol
-- **MQTT for Commands**: Asynchronous, pub/sub model ideal for vending/validation requests
-- **HTTP REST for Services**: Synchronous, reliable for back-office communication
-- **Why**: Best of both worlds - MQTT for real-time events, HTTP for critical operations
+### MQTT + REST Hybrid
+- **MQTT**: Event-driven requests (sale, validation) - pub/sub model
+- **REST**: Critical operations (API calls to Back-Office) - request/response
 
 ### Offline Validation
-- Gates validate locally by checking ticket expiry when back-office is unavailable
-- **Trade-off**: Less secure but maintains service availability
-- **Why**: Real-world requirement - gates must function during network issues
+- **Trade-off**: Less secure but maintains availability
+- **Implementation**: Local expiry check only (as specified)
 
-### XML Reporting
-- Gates send periodic XML reports to back-office
-- **Format**: Statistics + last N validations
-- **Why**: Structured data format suitable for archival and analysis
-
-## 🚀 Advanced Features (Bonus)
-
-### gRPC Support
-To enable gRPC for transaction reporting:
-```bash
-cmake -DENABLE_GRPC=ON ..
-make
-```
-
-### Retry Mechanisms
-Automatic retry with exponential backoff for failed requests (implemented in HTTP client)
-
-### Dynamic Gate Addition
-Add gates at runtime by scaling Docker services:
-```bash
-docker-compose up -d --scale gate1=10
-```
-
-## 📝 License
-
-This project is created for evaluation purposes as part of a technical assessment.
+### CSV Storage
+- **Why**: Simple, human-readable, easy to debug
+- **Alternative**: Could use SQLite for production
 
 ## 👤 Author
 
-**Samir Rizk**
-- GitHub: [SamRizk](https://github.com/SamRizk)
+**Your Name**
+- GitHub: ([SamRizk](https://github.com/SamRizk))
 - Email: samir9999life@gmail.com
+
+## 📄 License
+
+This project was created as part of a technical assessment for Hitachi Rail.
 
 ## 🙏 Acknowledgments
 
