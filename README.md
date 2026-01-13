@@ -81,7 +81,7 @@ This project implements a realistic transport ticketing system simulator as per 
 
 ```bash
 # 1. Clone the repository
-git clone <[your-repo-url](https://github.com/SamRizk/TRANSPORT-TICKETING-SYSTEM_samirRizk.git)>
+git clone (https://github.com/SamRizk/TRANSPORT-TICKETING-SYSTEM_samirRizk.git)
 cd TicketingTask_SamirRizk
 
 # 2. Start all services
