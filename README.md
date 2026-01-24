@@ -371,7 +371,7 @@ sudo apt-get install libpaho-mqtt-dev libpaho-mqttpp-dev
 
 ## 👤 Author
 
-**Your Name**
+**Samir Rizk**
 - GitHub: ([SamRizk](https://github.com/SamRizk))
 - Email: samir9999life@gmail.com
 
